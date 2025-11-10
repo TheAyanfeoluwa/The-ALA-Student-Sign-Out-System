@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth.tsx';
+import { DataProvider } from './hooks/useDataStore.tsx';
 import { LoginForm } from './components/LoginForm';
 import { StudentProgressDashboard } from './components/StudentProgressDashboard';
 import { SimplifiedAdminDashboard } from './components/SimplifiedAdminDashboard';
@@ -23,7 +24,9 @@ function AppContent() {
     return (
       <div>
         <div className="absolute top-4 right-4 z-10">
-         
+          <Button variant="default" onClick={() => setShowKiosk(false)}>
+            Exit Kiosk Mode
+          </Button>
         </div>
         <StationStaffInterface />
       </div>
@@ -39,7 +42,10 @@ function AppContent() {
       return (
         <div>
           <div className="absolute top-4 right-4 z-10">
-            
+            <Button variant="outline" onClick={() => setShowKiosk(true)}>
+              <Tablet className="h-4 w-4 mr-2" />
+              Kiosk Mode
+            </Button>
           </div>
           <StationStaffInterface />
         </div>
@@ -58,8 +64,10 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
-      <Toaster />
+      <DataProvider>
+        <AppContent />
+        <Toaster />
+      </DataProvider>
     </AuthProvider>
   );
 }

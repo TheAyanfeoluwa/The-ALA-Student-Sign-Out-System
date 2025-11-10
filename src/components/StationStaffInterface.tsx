@@ -9,16 +9,18 @@ import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 import { toast } from 'sonner@2.0.3';
 import { useAuth } from '../hooks/useAuth.tsx';
-import { mockStudents, mockClearanceItems } from '../data/mockData';
+import { useDataStore } from '../hooks/useDataStore.tsx';
+import { mockClearanceItems } from '../data/mockData';
 import { Student, ClearanceItem } from '../types';
 import { sendCheckoutCompletedWebhook } from '../services/webhookService';
 import { Search, User, CheckCircle, Clock, Package, Save, ArrowLeft } from 'lucide-react';
-import alaLogo from 'figma:asset/98c862684db16b3b8a0d3e90ef2456b6acca8f4e.png';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 type InterfaceState = 'search' | 'student_details' | 'processing';
 
 export function StationStaffInterface() {
   const { logout, user } = useAuth();
+  const { students, submitClearanceItem, approveStudent } = useDataStore();
   const [interfaceState, setInterfaceState] = useState<InterfaceState>('search');
   const [studentSearch, setStudentSearch] = useState('');
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
@@ -398,8 +400,8 @@ export function StationStaffInterface() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <img 
-                src={alaLogo} 
+              <ImageWithFallback 
+                src="https://www.africanleadershipacademy.org/wp-content/uploads/2018/07/Aplicar-Etapa-1.png" 
                 alt="African Leadership Academy Logo" 
                 className="h-12 w-12 object-contain mr-4"
               />

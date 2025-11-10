@@ -7,21 +7,28 @@ import { Label } from './ui/label';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useAuth } from '../hooks/useAuth.tsx';
-import { mockStudents, mockClearanceItems } from '../data/mockData';
+import { useDataStore } from '../hooks/useDataStore.tsx';
+import { mockClearanceItems } from '../data/mockData';
 import { Student } from '../types';
-import { Search, Users, TrendingUp, CheckCircle, Clock, AlertTriangle, Eye, BarChart3, Calculator, Book, MonitorSpeaker, Shirt, Dumbbell, UserPlus } from 'lucide-react';
+import { Search, Users, TrendingUp, CheckCircle, Clock, AlertTriangle, Eye, BarChart3, Calculator, Book, MonitorSpeaker, Shirt, Dumbbell, UserPlus, UserCog, Download, Shield } from 'lucide-react';
 import { StudentDetailModal } from './StudentDetailModal';
 import { StudentRegistrationForm } from './StudentRegistrationForm';
+import { StaffRegistrationForm } from './StaffRegistrationForm';
+import { AdminUnlockRequests } from './AdminUnlockRequests';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
+import { exportStudentDataToCSV, exportStudentDataToExcel } from '../utils/csvExport';
+import { exportAdminData } from '../utils/excelExport';
+
 export function SimplifiedAdminDashboard() {
   const { logout } = useAuth();
+  const { students, addStudent, studentItemRegistrations, unlockRequests } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
-  const [students, setStudents] = useState(mockStudents);
+  const [showStaffRegistrationForm, setShowStaffRegistrationForm] = useState(false);
 
   const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -56,7 +63,7 @@ export function SimplifiedAdminDashboard() {
   };
 
   const handleStudentAdded = (newStudent: Student) => {
-    setStudents(prev => [...prev, newStudent]);
+    addStudent(newStudent);
     toast.success('Student successfully added to the system!');
   };
 
@@ -240,11 +247,71 @@ export function SimplifiedAdminDashboard() {
     return stats;
   };
 
+  const handleExportCSV = () => {
+    exportStudentDataToCSV({
+      students,
+      clearanceItems: mockClearanceItems,
+      itemRegistrations: studentItemRegistrations
+    });
+    toast.success('CSV files downloaded successfully!');
+  };
+
+  const handleExportExcel = () => {
+    exportAdminData(students, studentItemRegistrations);
+    toast.success('6 Excel sheets downloaded successfully! Check your downloads folder for all files.');
+  };
+
   const renderDataTab = () => {
     const itemStats = getItemReturnStats();
     
     return (
       <div className="space-y-6">
+        {/* Export Data Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Export Data
+            </CardTitle>
+            <CardDescription>
+              Download comprehensive clearance data for record-keeping and analysis
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button 
+                onClick={handleExportCSV}
+                className="flex items-center gap-2"
+                variant="outline"
+              >
+                <Download className="h-4 w-4" />
+                Download Multiple CSV Files
+              </Button>
+              <Button 
+                onClick={handleExportExcel}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download All 6 Sheets (Multiple Files)
+              </Button>
+            </div>
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <h4 className="font-medium mb-2">Export Includes (6 Separate CSV Files):</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                <div>• 1_Student_Overview - All student details</div>
+                <div>• 2_Item_Returns - Returns with timestamps</div>
+                <div>• 3_Assigned_Items - Current assignments</div>
+                <div>• 4_Subject_Materials - Material tracking</div>
+                <div>• 5_Financial_Status - Outstanding balances</div>
+                <div>• 6_Approval_Status - All approvals</div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 italic">
+                Note: Each sheet downloads as a separate CSV file. You can import all files into Excel to create a multi-sheet workbook.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -415,6 +482,79 @@ export function SimplifiedAdminDashboard() {
     </div>
   );
 
+  const renderStaffRegistrationTab = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCog className="h-5 w-5" />
+            Register New Staff Member
+          </CardTitle>
+          <CardDescription>
+            Create accounts for teachers, advisors, hall heads, and year heads to manage the clearance system.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Button 
+              onClick={() => setShowStaffRegistrationForm(true)}
+              className="bg-primary hover:bg-primary/90"
+              size="lg"
+            >
+              <UserCog className="h-5 w-5 mr-2" />
+              Register New Staff
+            </Button>
+          </div>
+          
+          <div className="mt-8 p-4 bg-muted rounded-lg">
+            <h4 className="font-medium mb-2">Available Staff Roles:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium">Teacher</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Approve student clearances and manage class requirements
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-green-600" />
+                  <span className="font-medium">Advisor</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Guide students through clearance process and provide approval
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4 text-purple-600" />
+                  <span className="font-medium">Hall Head</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Manage hall clearances and approve students in assigned halls
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-orange-600" />
+                  <span className="font-medium">Year Head</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Oversee year-level clearances and final approvals
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const renderStudentLookupTab = () => (
     <Card>
       <CardHeader>
@@ -524,11 +664,21 @@ export function SimplifiedAdminDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Real-time Overview</TabsTrigger>
             <TabsTrigger value="search">Student Search</TabsTrigger>
             <TabsTrigger value="data">Data</TabsTrigger>
             <TabsTrigger value="register">Register Student</TabsTrigger>
+            <TabsTrigger value="staff">Register Staff</TabsTrigger>
+            <TabsTrigger value="security">
+              <Shield className="h-4 w-4 mr-1" />
+              Security
+              {unlockRequests.filter(r => r.status === 'pending').length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">
+                  {unlockRequests.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -545,6 +695,14 @@ export function SimplifiedAdminDashboard() {
 
           <TabsContent value="register">
             {renderRegistrationTab()}
+          </TabsContent>
+
+          <TabsContent value="staff">
+            {renderStaffRegistrationTab()}
+          </TabsContent>
+
+          <TabsContent value="security">
+            <AdminUnlockRequests />
           </TabsContent>
         </Tabs>
       </div>
@@ -564,6 +722,14 @@ export function SimplifiedAdminDashboard() {
           open={showRegistrationForm}
           onClose={() => setShowRegistrationForm(false)}
           onStudentAdded={handleStudentAdded}
+        />
+      )}
+
+      {/* Staff Registration Modal */}
+      {showStaffRegistrationForm && (
+        <StaffRegistrationForm
+          open={showStaffRegistrationForm}
+          onClose={() => setShowStaffRegistrationForm(false)}
         />
       )}
     </div>

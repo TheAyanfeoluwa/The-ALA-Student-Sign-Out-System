@@ -82,12 +82,32 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string;
   role: 'student' | 'admin' | 'teacher' | 'hall_head' | 'station_staff' | 'advisor' | 'year_head';
   studentInfo?: Student;
   teacherClasses?: string[]; // Array of class IDs for teachers
   managedHalls?: string[]; // Array of hall IDs for hall heads
   advisees?: string[]; // Array of student IDs for advisors
   managedGrades?: string[]; // Array of grades for year heads
+  loginAttempts?: number;
+  lockedUntil?: string;
+  isLocked?: boolean;
+  lastLoginAttempt?: string;
+  lockReason?: string;
+}
+
+export interface AdminUnlockRequest {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  lockedAt: string;
+  attemptCount: number;
+  requestedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: string;
+  notes?: string;
 }
 
 export interface ClassInfo {
@@ -136,4 +156,30 @@ export interface SignOutRequest {
   reviewedBy?: string;
   reviewedAt?: string;
   reviewNotes?: string;
+}
+
+export interface StudentItemRegistration {
+  id: string;
+  studentId: string;
+  studentName: string;
+  teacherId: string;
+  teacherName: string;
+  subject?: string;
+  serialNumber: string;
+  itemType: 'calculator' | 'textbook' | 'it_equipment' | 'sports_equipment';
+  itemDescription: string;
+  registeredAt: string;
+  registeredBy: string;
+  status: 'assigned' | 'returned' | 'missing' | 'damaged';
+  returnedAt?: string;
+  condition?: 'good' | 'fair' | 'damaged';
+  reportedIssue?: {
+    type: 'missing' | 'damaged';
+    reportedAt: string;
+    description: string;
+    resolved?: boolean;
+    resolvedAt?: string;
+    resolvedBy?: string;
+    resolutionNotes?: string;
+  };
 }

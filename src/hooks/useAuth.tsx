@@ -1,10 +1,9 @@
 import { useState, useContext, createContext, ReactNode } from 'react';
 import { User } from '../types';
-import { mockUsers } from '../data/mockData';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, users: User[]) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -15,13 +14,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, users: User[]): Promise<boolean> => {
     setIsLoading(true);
     
     // Mock authentication - in real app, this would be an API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const foundUser = mockUsers.find(u => u.email === email);
+    // Use the current users from DataStore (not static mockUsers)
+    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     
     if (foundUser && password === 'password') {
       setUser(foundUser);

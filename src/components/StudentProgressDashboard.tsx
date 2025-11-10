@@ -6,18 +6,22 @@ import { Progress } from './ui/progress';
 import { Alert, AlertDescription } from './ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { useAuth } from '../hooks/useAuth.tsx';
+import { useDataStore } from '../hooks/useDataStore.tsx';
 import { mockClearanceItems } from '../data/mockData';
 import { ClearanceItem, ClearanceStatus } from '../types';
 import { CheckCircle, Clock, AlertTriangle, Download, QrCode, DollarSign, User, Mail, Calendar } from 'lucide-react';
 import { ClearanceReceipt } from './ClearanceReceipt';
 import { StudentRequirements } from './StudentRequirements';
-import alaLogo from 'figma:asset/98c862684db16b3b8a0d3e90ef2456b6acca8f4e.png';
+import { StudentAssignedItems } from './StudentAssignedItems';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 export function StudentProgressDashboard() {
   const { user, logout } = useAuth();
+  const { students } = useDataStore();
   const [showReceipt, setShowReceipt] = useState(false);
   
-  const student = user?.studentInfo;
+  // Get the most up-to-date student data from the store
+  const student = user?.studentInfo ? students.find(s => s.id === user.studentInfo.id) || user.studentInfo : null;
   if (!student) return null;
 
   const getItemStatus = (itemId: string): ClearanceStatus | undefined => {
@@ -101,8 +105,8 @@ export function StudentProgressDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <img 
-                src={alaLogo} 
+              <ImageWithFallback 
+                src="https://www.africanleadershipacademy.org/wp-content/uploads/2018/07/Aplicar-Etapa-1.png" 
                 alt="African Leadership Academy Logo" 
                 className="h-12 w-12 object-contain mr-4"
               />
@@ -230,6 +234,9 @@ export function StudentProgressDashboard() {
 
         {/* Teacher Requirements */}
         <StudentRequirements studentId={student.id} />
+
+        {/* Assigned Items */}
+        <StudentAssignedItems studentId={student.id} />
 
         {/* Approval Status */}
         <Card className="mb-6">

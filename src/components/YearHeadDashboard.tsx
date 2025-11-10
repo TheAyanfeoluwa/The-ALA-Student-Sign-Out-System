@@ -8,7 +8,7 @@ import { mockStudents, mockClearanceItems } from '../data/mockData';
 import { Student } from '../types';
 import { CheckCircle, Clock, Users, GraduationCap, Check, X } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import alaLogo from 'figma:asset/98c862684db16b3b8a0d3e90ef2456b6acca8f4e.png';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 export function YearHeadDashboard() {
   const { logout } = useAuth();
@@ -87,8 +87,8 @@ export function YearHeadDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <img 
-                src={alaLogo} 
+              <ImageWithFallback 
+                src="https://www.africanleadershipacademy.org/wp-content/uploads/2018/07/Aplicar-Etapa-1.png" 
                 alt="African Leadership Academy Logo" 
                 className="h-12 w-12 object-contain mr-4"
               />

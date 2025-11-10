@@ -9,37 +9,44 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Checkbox } from './ui/checkbox';
 import { toast } from 'sonner@2.0.3';
 import { useAuth } from '../hooks/useAuth.tsx';
-import { mockStudents, mockClearanceItems, mockStudentRequirements } from '../data/mockData';
+import { useDataStore } from '../hooks/useDataStore.tsx';
+import { mockClearanceItems } from '../data/mockData';
 import { Student, StudentRequirement } from '../types';
 import { CheckCircle, Clock, AlertTriangle, Users, GraduationCap, Building, UserCheck, Plus, FileText } from 'lucide-react';
-import alaLogo from 'figma:asset/98c862684db16b3b8a0d3e90ef2456b6acca8f4e.png';
+import { ImageWithFallback } from './figma/ImageWithFallback';
+import { StudentItemRegistrationForm } from './StudentItemRegistrationForm';
 
 export function ApprovalDashboard() {
   const { user, logout } = useAuth();
+  const { students, studentRequirements, approveStudent, addStudentRequirement, updateStudentRequirement } = useDataStore();
   const [processingStudents, setProcessingStudents] = useState<Set<string>>(new Set());
   const [showAddRequirement, setShowAddRequirement] = useState(false);
   const [requirementForm, setRequirementForm] = useState({
-    studentId: '',
+    selectedStudents: [] as string[],
     requirement: '',
     dueDate: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
-    notes: ''
+    notes: '',
+    applyToAll: false
   });
-  const [studentRequirements, setStudentRequirements] = useState<StudentRequirement[]>(mockStudentRequirements);
 
   // Get students based on user role
   const getRelevantStudents = (): Student[] => {
     switch (user?.role) {
       case 'teacher':
-        return mockStudents.filter(student => student.teacher === user.name);
+        return students.filter(student => 
+          student.teacher?.includes(user.name || '') || 
+          student.teacher === user.name
+        );
       case 'hall_head':
-        return mockStudents.filter(student => 
+        return students.filter(student => 
           user.managedHalls?.includes(student.hall || '')
         );
       case 'advisor':
-        return mockStudents.filter(student => 
+        return students.filter(student => 
           user.advisees?.includes(student.id)
         );
       default:
@@ -89,6 +96,7 @@ export function ApprovalDashboard() {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     const student = relevantStudents.find(s => s.id === studentId);
+    approveStudent(studentId, user?.role || '', user?.name || '');
     toast.success(`${student?.name} approved successfully!`);
     
     setProcessingStudents(prev => {
@@ -106,6 +114,11 @@ export function ApprovalDashboard() {
     
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    // Approve each student
+    students.forEach(student => {
+      approveStudent(student.id, user?.role || '', user?.name || '');
+    });
+    
     toast.success(`Approved ${students.length} student(s) successfully!`);
     
     setProcessingStudents(prev => {
@@ -116,53 +129,59 @@ export function ApprovalDashboard() {
   };
 
   const handleAddRequirement = async () => {
-    if (!requirementForm.studentId || !requirementForm.requirement) {
-      toast.error('Please fill in all required fields');
+    if (!requirementForm.requirement) {
+      toast.error('Please enter a requirement description');
       return;
     }
 
-    const student = relevantStudents.find(s => s.id === requirementForm.studentId);
-    if (!student) {
-      toast.error('Student not found');
+    const targetStudents = requirementForm.applyToAll 
+      ? relevantStudents 
+      : relevantStudents.filter(s => requirementForm.selectedStudents.includes(s.id));
+
+    if (targetStudents.length === 0) {
+      toast.error('Please select at least one student');
       return;
     }
 
-    const newRequirement: StudentRequirement = {
-      id: Date.now().toString(),
-      studentId: requirementForm.studentId,
-      teacherId: user?.id || '',
-      teacherName: user?.name || '',
-      requirement: requirementForm.requirement,
-      dueDate: requirementForm.dueDate || undefined,
-      priority: requirementForm.priority,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      notes: requirementForm.notes || undefined
-    };
+    // Create requirements for each selected student
+    targetStudents.forEach(student => {
+      const newRequirement: StudentRequirement = {
+        id: `${Date.now()}-${student.id}`,
+        studentId: student.id,
+        teacherId: user?.id || '',
+        teacherName: user?.name || '',
+        requirement: requirementForm.requirement,
+        dueDate: requirementForm.dueDate || undefined,
+        priority: requirementForm.priority,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        notes: requirementForm.notes || undefined
+      };
 
-    setStudentRequirements(prev => [...prev, newRequirement]);
+      addStudentRequirement(newRequirement);
+    });
     
-    toast.success(`Requirement added for ${student.name}`, {
+    toast.success(`Requirement added for ${targetStudents.length} student(s)`, {
       description: requirementForm.requirement
     });
 
     // Reset form
     setRequirementForm({
-      studentId: '',
+      selectedStudents: [],
       requirement: '',
       dueDate: '',
       priority: 'medium',
-      notes: ''
+      notes: '',
+      applyToAll: false
     });
     setShowAddRequirement(false);
   };
 
   const handleMarkRequirementComplete = async (requirementId: string) => {
-    setStudentRequirements(prev => prev.map(req => 
-      req.id === requirementId 
-        ? { ...req, status: 'completed', completedAt: new Date().toISOString() }
-        : req
-    ));
+    updateStudentRequirement(requirementId, { 
+      status: 'completed', 
+      completedAt: new Date().toISOString() 
+    });
     
     const requirement = studentRequirements.find(req => req.id === requirementId);
     if (requirement) {
@@ -351,24 +370,68 @@ export function ApprovalDashboard() {
         </CardHeader>
         {showAddRequirement && (
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="student-select">Select Student</Label>
-                <Select value={requirementForm.studentId} onValueChange={(value) => 
-                  setRequirementForm(prev => ({ ...prev, studentId: value }))
-                }>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a student" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {relevantStudents.map(student => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.name} ({student.studentId})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {/* Apply to All Students Option */}
+            <Card className="p-4 bg-muted">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="apply-all"
+                  checked={requirementForm.applyToAll}
+                  onCheckedChange={(checked) => 
+                    setRequirementForm(prev => ({ 
+                      ...prev, 
+                      applyToAll: checked as boolean,
+                      selectedStudents: checked ? [] : prev.selectedStudents
+                    }))
+                  }
+                />
+                <Label htmlFor="apply-all" className="font-medium">
+                  Apply to all my students ({relevantStudents.length})
+                </Label>
               </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Check this to add the requirement to all students under your supervision
+              </p>
+            </Card>
+
+            {/* Individual Student Selection */}
+            {!requirementForm.applyToAll && (
+              <div>
+                <Label className="text-base font-medium">Select Students</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Choose which students should receive this requirement
+                </p>
+                <Card className="p-4 max-h-48 overflow-y-auto">
+                  <div className="space-y-2">
+                    {relevantStudents.map(student => (
+                      <div key={student.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`student-${student.id}`}
+                          checked={requirementForm.selectedStudents.includes(student.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setRequirementForm(prev => ({
+                                ...prev,
+                                selectedStudents: [...prev.selectedStudents, student.id]
+                              }));
+                            } else {
+                              setRequirementForm(prev => ({
+                                ...prev,
+                                selectedStudents: prev.selectedStudents.filter(id => id !== student.id)
+                              }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`student-${student.id}`} className="cursor-pointer">
+                          {student.name} ({student.studentId})
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="priority">Priority</Label>
                 <Select value={requirementForm.priority} onValueChange={(value: 'low' | 'medium' | 'high') => 
@@ -535,8 +598,8 @@ export function ApprovalDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <img 
-                src={alaLogo} 
+              <ImageWithFallback 
+                src="https://www.africanleadershipacademy.org/wp-content/uploads/2018/07/Aplicar-Etapa-1.png" 
                 alt="African Leadership Academy Logo" 
                 className="h-12 w-12 object-contain mr-4"
               />
@@ -597,6 +660,7 @@ export function ApprovalDashboard() {
             <TabsList>
               <TabsTrigger value="approvals">Student Approvals</TabsTrigger>
               <TabsTrigger value="requirements">Student Requirements</TabsTrigger>
+              <TabsTrigger value="registration">Item Registration</TabsTrigger>
             </TabsList>
 
             <TabsContent value="approvals">
@@ -775,6 +839,13 @@ export function ApprovalDashboard() {
 
             <TabsContent value="requirements">
               {renderTeacherRequirements()}
+            </TabsContent>
+
+            <TabsContent value="registration">
+              <StudentItemRegistrationForm 
+                teacherId={user?.id || ''} 
+                teacherName={user?.name || ''} 
+              />
             </TabsContent>
           </Tabs>
         ) : (
